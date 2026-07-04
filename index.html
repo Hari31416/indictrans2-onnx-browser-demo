@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndicTrans2 ONNX In-Browser Translation Demo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- ONNX Runtime Web -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b;
+        }
+        .glow-card {
+            box-shadow: 0 0 20px 0 rgba(20, 184, 166, 0.05);
+            transition: all 0.3s ease;
+        }
+        .glow-card:hover {
+            box-shadow: 0 0 25px 0 rgba(20, 184, 166, 0.1);
+        }
+    </style>
+</head>
+<body class="text-zinc-100 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto space-y-8">
+        
+        <!-- Header -->
+        <div class="text-center space-y-4">
+            <h1 class="text-4xl font-extrabold tracking-tight text-teal-400">
+                IndicTrans2 ONNX Browser Translation
+            </h1>
+            <p class="text-zinc-400 max-w-xl mx-auto">
+                Evaluate optimized IndicTrans2 models running directly in your browser. Fast local translation using WebGPU / WASM without server-side APIs.
+            </p>
+            <div class="flex justify-center gap-3">
+                <a href="https://huggingface.co/collections/hari31416/indictrans2-onnx-exports" target="_blank" class="px-3 py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md flex items-center gap-1.5 transition">
+                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 95 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#FFD21E" d="M47.21 76.5a34.75 34.75 0 1 0 0-69.5 34.75 34.75 0 0 0 0 69.5Z" />
+                        <path fill="#FF9D0B" d="M81.96 41.75a34.75 34.75 0 1 0-69.5 0 34.75 34.75 0 0 0 69.5 0Zm-73.5 0a38.75 38.75 0 1 1 77.5 0 38.75 38.75 0 0 1-77.5 0Z" />
+                        <path fill="#3A3B45" d="M58.5 32.3c1.28.44 1.78 3.06 3.07 2.38a5 5 0 1 0-6.76-2.07c.61 1.15 2.55-.72 3.7-.32ZM34.95 32.3c-1.28.44-1.79 3.06-3.07 2.38a5 5 0 1 1 6.76-2.07c-.61 1.15-2.56-.72-3.7-.32Z" />
+                        <path fill="#FF323D" d="M46.96 56.29c9.83 0 13-8.76 13-13.26 0-2.34-1.57-1.6-4.09-.36-2.33 1.15-5.46 2.74-8.9 2.74-7.19 0-13-6.88-13-2.38s3.16 13.26 13 13.26Z" />
+                        <path fill="#3A3B45" fill-rule="evenodd" d="M39.43 54a8.7 8.7 0 0 1 5.3-4.49c.4-.12.81.57 1.24 1.28.4.68.82 1.37 1.24 1.37.45 0 .9-.68 1.33-1.35.45-.7.89-1.38 1.32-1.25a8.61 8.61 0 0 1 5 4.17c3.73-2.94 5.1-7.74 5.1-10.7 0-2.34-1.57-1.6-4.09-.36l-.14.07c-2.31 1.15-5.39 2.67-8.77 2.67s-6.45-1.52-8.77-2.67c-2.6-1.29-4.23-2.1-4.23.29 0 3.05 1.46 8.06 5.47 10.97Z" clip-rule="evenodd" />
+                        <path fill="#FF9D0B" d="M70.71 37a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5ZM24.21 37a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5ZM17.52 48c-1.62 0-3.06.66-4.07 1.87a5.97 5.97 0 0 0-1.33 3.76 7.1 7.1 0 0 0-1.94-.3c-1.55 0-2.95.59-3.94 1.66a5.8 5.8 0 0 0-.8 7 5.3 5.3 0 0 0-1.79 2.82c-.24.9-.48 2.8.8 4.74a5.22 5.22 0 0 0-.37 5.02c1.02 2.32 3.57 4.14 8.52 6.1 3.07 1.22 5.89 2 5.91 2.01a44.33 44.33 0 0 0 10.93 1.6c5.86 0 10.05-1.8 12.46-5.34 3.88-5.69 3.33-10.9-1.7-15.92-2.77-2.78-4.62-6.87-5-7.77-.78-2.66-2.84-5.62-6.25-5.62a5.7 5.7 0 0 0-4.6 2.46c-1-1.26-1.98-2.25-2.86-2.82A7.4 7.4 0 0 0 17.52 48Zm0 4c.51 0 1.14.22 1.82.65 2.14 1.36 6.25 8.43 7.76 11.18.5.92 1.37 1.31 2.14 1.31 1.55 0 2.75-1.53.15-3.48-3.92-2.93-2.55-7.72-.68-8.01.08-.02.17-.02.24-.02 1.7 0 2.45 2.93 2.45 2.93s2.2 5.52 5.98 9.3c3.77 3.77 3.97 6.8 1.22 10.83-1.88 2.75-5.47 3.58-9.16 3.58-3.81 0-7.73-.9-9.92-1.46-.11-.03-13.45-3.8-11.76-7 .28-.54.75-.76 1.34-.76 2.38 0 6.7 3.54 8.57 3.54.41 0 .7-.17.83-.6.79-2.85-12.06-4.05-10.98-8.17.2-.73.71-1.02 1.44-1.02 3.14 0 10.2 5.53 11.68 5.53.11 0 .2-.03.24-.1.74-1.2.33-2.04-4.9-5.2-5.21-3.16-8.88-5.06-6.8-7.33.24-.26.58-.38 1-.38 3.17 0 10.66 6.82 10.66 6.82s2.02 2.1 3.25 2.1c.28 0 .52-.1.68-.38.86-1.46-8.06-8.22-8.56-11.01-.34-1.9.24-2.85 1.31-2.85Z" />
+                        <path fill="#FFD21E" d="M38.6 76.69c2.75-4.04 2.55-7.07-1.22-10.84-3.78-3.77-5.98-9.3-5.98-9.3s-.82-3.2-2.69-2.9c-1.87.3-3.24 5.08.68 8.01 3.91 2.93-.78 4.92-2.29 2.17-1.5-2.75-5.62-9.82-7.76-11.18-2.13-1.35-3.63-.6-3.13 2.2.5 2.79 9.43 9.55 8.56 11-.87 1.47-3.93-1.71-3.93-1.71s-9.57-8.71-11.66-6.44c-2.08 2.27 1.59 4.17 6.8 7.33 5.23 3.16 5.64 4 4.9 5.2-.75 1.2-12.28-8.53-13.36-4.4-1.08 4.11 11.77 5.3 10.98 8.15-.8 2.85-9.06-5.38-10.74-2.18-1.7 3.21 11.65 6.98 11.76 7.01 4.3 1.12 15.25 3.49 19.08-2.12Z" />
+                    </svg>
+                    200M/320M Models
+                </a>
+                <a href="https://huggingface.co/collections/hari31416/indictrans2-1b-onnx-exports" target="_blank" class="px-3 py-1.5 text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md flex items-center gap-1.5 transition">
+                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 95 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#FFD21E" d="M47.21 76.5a34.75 34.75 0 1 0 0-69.5 34.75 34.75 0 0 0 0 69.5Z" />
+                        <path fill="#FF9D0B" d="M81.96 41.75a34.75 34.75 0 1 0-69.5 0 34.75 34.75 0 0 0 69.5 0Zm-73.5 0a38.75 38.75 0 1 1 77.5 0 38.75 38.75 0 0 1-77.5 0Z" />
+                        <path fill="#3A3B45" d="M58.5 32.3c1.28.44 1.78 3.06 3.07 2.38a5 5 0 1 0-6.76-2.07c.61 1.15 2.55-.72 3.7-.32ZM34.95 32.3c-1.28.44-1.79 3.06-3.07 2.38a5 5 0 1 1 6.76-2.07c-.61 1.15-2.56-.72-3.7-.32Z" />
+                        <path fill="#FF323D" d="M46.96 56.29c9.83 0 13-8.76 13-13.26 0-2.34-1.57-1.6-4.09-.36-2.33 1.15-5.46 2.74-8.9 2.74-7.19 0-13-6.88-13-2.38s3.16 13.26 13 13.26Z" />
+                        <path fill="#3A3B45" fill-rule="evenodd" d="M39.43 54a8.7 8.7 0 0 1 5.3-4.49c.4-.12.81.57 1.24 1.28.4.68.82 1.37 1.24 1.37.45 0 .9-.68 1.33-1.35.45-.7.89-1.38 1.32-1.25a8.61 8.61 0 0 1 5 4.17c3.73-2.94 5.1-7.74 5.1-10.7 0-2.34-1.57-1.6-4.09-.36l-.14.07c-2.31 1.15-5.39 2.67-8.77 2.67s-6.45-1.52-8.77-2.67c-2.6-1.29-4.23-2.1-4.23.29 0 3.05 1.46 8.06 5.47 10.97Z" clip-rule="evenodd" />
+                        <path fill="#FF9D0B" d="M70.71 37a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5ZM24.21 37a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5ZM17.52 48c-1.62 0-3.06.66-4.07 1.87a5.97 5.97 0 0 0-1.33 3.76 7.1 7.1 0 0 0-1.94-.3c-1.55 0-2.95.59-3.94 1.66a5.8 5.8 0 0 0-.8 7 5.3 5.3 0 0 0-1.79 2.82c-.24.9-.48 2.8.8 4.74a5.22 5.22 0 0 0-.37 5.02c1.02 2.32 3.57 4.14 8.52 6.1 3.07 1.22 5.89 2 5.91 2.01a44.33 44.33 0 0 0 10.93 1.6c5.86 0 10.05-1.8 12.46-5.34 3.88-5.69 3.33-10.9-1.7-15.92-2.77-2.78-4.62-6.87-5-7.77-.78-2.66-2.84-5.62-6.25-5.62a5.7 5.7 0 0 0-4.6 2.46c-1-1.26-1.98-2.25-2.86-2.82A7.4 7.4 0 0 0 17.52 48Zm0 4c.51 0 1.14.22 1.82.65 2.14 1.36 6.25 8.43 7.76 11.18.5.92 1.37 1.31 2.14 1.31 1.55 0 2.75-1.53.15-3.48-3.92-2.93-2.55-7.72-.68-8.01.08-.02.17-.02.24-.02 1.7 0 2.45 2.93 2.45 2.93s2.2 5.52 5.98 9.3c3.77 3.77 3.97 6.8 1.22 10.83-1.88 2.75-5.47 3.58-9.16 3.58-3.81 0-7.73-.9-9.92-1.46-.11-.03-13.45-3.8-11.76-7 .28-.54.75-.76 1.34-.76 2.38 0 6.7 3.54 8.57 3.54.41 0 .7-.17.83-.6.79-2.85-12.06-4.05-10.98-8.17.2-.73.71-1.02 1.44-1.02 3.14 0 10.2 5.53 11.68 5.53.11 0 .2-.03.24-.1.74-1.2.33-2.04-4.9-5.2-5.21-3.16-8.88-5.06-6.8-7.33.24-.26.58-.38 1-.38 3.17 0 10.66 6.82 10.66 6.82s2.02 2.1 3.25 2.1c.28 0 .52-.1.68-.38.86-1.46-8.06-8.22-8.56-11.01-.34-1.9.24-2.85 1.31-2.85Z" />
+                        <path fill="#FFD21E" d="M38.6 76.69c2.75-4.04 2.55-7.07-1.22-10.84-3.78-3.77-5.98-9.3-5.98-9.3s-.82-3.2-2.69-2.9c-1.87.3-3.24 5.08.68 8.01 3.91 2.93-.78 4.92-2.29 2.17-1.5-2.75-5.62-9.82-7.76-11.18-2.13-1.35-3.63-.6-3.13 2.2.5 2.79 9.43 9.55 8.56 11-.87 1.47-3.93-1.71-3.93-1.71s-9.57-8.71-11.66-6.44c-2.08 2.27 1.59 4.17 6.8 7.33 5.23 3.16 5.64 4 4.9 5.2-.75 1.2-12.28-8.53-13.36-4.4-1.08 4.11 11.77 5.3 10.98 8.15-.8 2.85-9.06-5.38-10.74-2.18-1.7 3.21 11.65 6.98 11.76 7.01 4.3 1.12 15.25 3.49 19.08-2.12Z" />
+                    </svg>
+                    1B Models
+                </a>
+            </div>
+        </div>
+
+        <!-- Setup Card -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 glow-card space-y-6">
+            <h2 class="text-xl font-bold flex items-center gap-2 text-zinc-100">
+                <span class="w-2.5 h-2.5 bg-teal-500 rounded-full animate-ping"></span>
+                Model Configurations
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Model Family -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Model Suite</label>
+                    <select id="model-config" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-teal-500">
+                        <option value="en-indic-200m">en-indic (200M Distilled)</option>
+                        <option value="en-indic-1b">en-indic (1B Full)</option>
+                        <option value="indic-en-200m">indic-en (200M Distilled)</option>
+                        <option value="indic-en-1b">indic-en (1B Full)</option>
+                        <option value="indic-indic-320m">indic-indic (320M Distilled)</option>
+                        <option value="indic-indic-1b">indic-indic (1B Full)</option>
+                    </select>
+                </div>
+
+                <!-- Precision -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Precision / Format</label>
+                    <select id="model-precision" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-teal-500">
+                        <option value="int8">INT8 (Recommended for CPU)</option>
+                        <option value="q4f16">Q4F16 (4-bit Block Quantized)</option>
+                        <option value="fp16">FP16 (Recommended for WebGPU)</option>
+                        <option value="fp32">FP32 (Full Baseline)</option>
+                    </select>
+                </div>
+
+                <!-- Provider -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Execution Provider</label>
+                    <select id="ort-provider" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-teal-500">
+                        <option value="webgpu">WebGPU (Accelerated)</option>
+                        <option value="wasm">WASM (CPU Fallback)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Warning Banner -->
+            <div id="quantization-warning" class="hidden bg-amber-950/40 border border-amber-900/60 rounded-lg p-4 text-xs text-amber-400 space-y-1">
+                <div class="font-bold flex items-center gap-1.5 text-amber-300">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    Warning: WebGPU Precision Limitation
+                </div>
+                <p>Running INT8 or Q4F16 quantized models on WebGPU frequently causes outputs to fail or degenerate into gibberish due to browser shader/driver bugs. WASM is strongly recommended for quantized tiers.</p>
+            </div>
+
+            <!-- Loading Buttons -->
+            <div class="flex gap-4">
+                <button id="btn-load" class="flex-1 py-3 px-6 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition shadow-lg shadow-teal-500/10 disabled:opacity-40 disabled:pointer-events-none">
+                    Load Model
+                </button>
+                <button id="btn-unload" disabled class="px-6 py-3 border border-zinc-800 hover:bg-zinc-850 text-zinc-400 font-semibold rounded-lg transition disabled:opacity-40 disabled:pointer-events-none">
+                    Unload Model
+                </button>
+            </div>
+        </div>
+
+        <!-- Playground Card -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 glow-card space-y-6">
+            <h2 class="text-xl font-bold text-zinc-100 flex items-center gap-2">
+                Translation Playground
+                <span id="badge-status" class="px-2 py-0.5 text-xs font-semibold bg-red-950 text-red-400 border border-red-900 rounded-full">
+                    Disconnected
+                </span>
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Source language selector & input -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-medium text-zinc-400">Source Language</label>
+                        <select id="src-lang" disabled class="bg-zinc-950 border border-zinc-800 rounded-md p-1.5 text-xs text-zinc-300 focus:outline-none disabled:opacity-50">
+                            <!-- Injected based on model direction -->
+                        </select>
+                    </div>
+                    <textarea id="src-text" disabled placeholder="Type your text to translate here..." 
+                        class="w-full h-40 bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-zinc-200 focus:outline-none focus:border-teal-500 resize-none placeholder-zinc-600 disabled:opacity-50"></textarea>
+                </div>
+
+                <!-- Target language selector & output -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-medium text-zinc-400">Target Language</label>
+                        <select id="tgt-lang" disabled class="bg-zinc-950 border border-zinc-800 rounded-md p-1.5 text-xs text-zinc-300 focus:outline-none disabled:opacity-50">
+                            <!-- Injected based on model direction -->
+                        </select>
+                    </div>
+                    <div class="relative h-40">
+                        <textarea id="tgt-text" readonly placeholder="Translation output will appear here..." 
+                            class="w-full h-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-zinc-300 focus:outline-none resize-none placeholder-zinc-750 disabled:opacity-50"></textarea>
+                        <!-- Translation Spinner -->
+                        <div id="translation-loader" class="hidden absolute inset-0 bg-zinc-950/70 rounded-lg flex items-center justify-center">
+                            <span class="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Translate Button & Performance metrics -->
+            <div class="pt-4 border-t border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <button id="btn-translate" disabled class="py-3 px-8 bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:pointer-events-none text-white font-semibold rounded-lg transition">
+                    Translate
+                </button>
+                
+                <!-- Performance metrics -->
+                <div id="metrics" class="hidden grid grid-cols-3 gap-4 text-center">
+                    <div class="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg">
+                        <div class="text-[10px] text-zinc-500 font-bold uppercase">Load Latency</div>
+                        <div id="metric-load" class="text-sm font-bold text-zinc-300">-</div>
+                    </div>
+                    <div class="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg">
+                        <div class="text-[10px] text-zinc-500 font-bold uppercase">Gen Speed</div>
+                        <div id="metric-speed" class="text-sm font-bold text-zinc-300">-</div>
+                    </div>
+                    <div class="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-lg">
+                        <div class="text-[10px] text-zinc-500 font-bold uppercase">Total Time</div>
+                        <div id="metric-total" class="text-sm font-bold text-zinc-300">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Status Card -->
+        <div id="loading-card" class="hidden bg-zinc-900 border border-zinc-800 rounded-xl p-6 glow-card space-y-4">
+            <div id="loading-header" class="flex justify-between items-center cursor-pointer select-none">
+                <div class="space-y-1">
+                    <h3 class="text-md font-bold text-zinc-200 flex items-center gap-2">
+                        Loading Weights & Configuration
+                        <span id="loading-summary-badge" class="hidden px-2 py-0.5 text-[10px] font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-900/60 rounded-full">Completed</span>
+                    </h3>
+                    <p id="loading-notes" class="text-xs text-zinc-400"></p>
+                </div>
+                <div id="loading-toggle-icon" class="text-zinc-500 hover:text-zinc-300 transition-colors">
+                    <svg id="chevron-icon" class="w-5 h-5 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </div>
+            <div id="loading-body" class="space-y-4 border-t border-zinc-800/50 pt-4">
+                <div id="progress-container" class="space-y-3">
+                    <!-- Progress bars will be injected here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ES Module Logic -->
+    <script type="module">
+        import { AutoTokenizer, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+        
+        // Setup transformers-js env to force remote model resolving
+        env.allowLocalModels = false;
+        env.allowRemoteModels = true;
+        env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+        
+        // Configure ORT
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+
+        const LANGUAGES = {
+            "eng_Latn": "English",
+            "asm_Beng": "Assamese (Bengali)",
+            "ben_Beng": "Bengali",
+            "brx_Deva": "Bodo",
+            "doi_Deva": "Dogri",
+            "guj_Gujr": "Gujarati",
+            "hin_Deva": "Hindi",
+            "kan_Knda": "Kannada",
+            "kas_Arab": "Kashmiri",
+            "kok_Deva": "Konkani",
+            "mai_Deva": "Maithili",
+            "mal_Mlym": "Malayalam",
+            "mni_Beng": "Manipuri",
+            "mar_Deva": "Marathi",
+            "npi_Deva": "Nepali",
+            "ory_Orya": "Odia",
+            "pan_Guru": "Punjabi",
+            "san_Deva": "Sanskrit",
+            "sat_Olck": "Santali",
+            "snd_Arab": "Sindhi",
+            "tam_Taml": "Tamil",
+            "tel_Telu": "Telugu",
+            "urd_Arab": "Urdu"
+        };
+
+        const SCRIPT_RANGES = {
+            "pa": 0x0A00,
+            "gu": 0x0A80,
+            "or": 0x0B00,
+            "ta": 0x0B80,
+            "te": 0x0C00,
+            "kn": 0x0C80,
+            "ml": 0x0D00,
+            "si": 0x0D80,
+            "hi": 0x0900,
+            "mr": 0x0900,
+            "kK": 0x0900,
+            "sa": 0x0900,
+            "ne": 0x0900,
+            "sd": 0x0900,
+            "bn": 0x0980,
+            "as": 0x0980,
+        };
+
+        const FLORES_TO_ISO = {
+            "asm_Beng": "as",
+            "ben_Beng": "bn",
+            "brx_Deva": "hi",
+            "doi_Deva": "hi",
+            "guj_Gujr": "gu",
+            "hin_Deva": "hi",
+            "kan_Knda": "kn",
+            "kas_Arab": "ur",
+            "kok_Deva": "hi",
+            "gom_Deva": "kK",
+            "mai_Deva": "hi",
+            "mal_Mlym": "ml",
+            "mar_Deva": "hi",
+            "mni_Beng": "bn",
+            "npi_Deva": "hi",
+            "ory_Orya": "or",
+            "pan_Guru": "pa",
+            "san_Deva": "hi",
+            "sat_Olck": "or",
+            "snd_Arab": "ur",
+            "tam_Taml": "ta",
+            "tel_Telu": "te",
+            "urd_Arab": "ur",
+        };
+
+        function correctTamilMapping(offset) {
+            if (offset >= 0x15 && offset <= 0x28 && offset !== 0x1C) {
+                const rem = (offset - 0x15) % 5;
+                if (rem !== 0 && rem !== 4) {
+                    const substChar = Math.floor((offset - 0x15) / 5);
+                    offset = 0x15 + 5 * substChar;
+                }
+            }
+            if (offset === 0x2B || offset === 0x2C || offset === 0x2D) {
+                offset = 0x2A;
+            }
+            if (offset === 0x36) {
+                offset = 0x37;
+            }
+            return offset;
+        }
+
+        function transliterate(text, srcLang, tgtLang) {
+            const srcIso = FLORES_TO_ISO[srcLang];
+            const tgtIso = FLORES_TO_ISO[tgtLang];
+
+            if (!srcIso || !tgtIso) return text;
+            
+            const srcStart = SCRIPT_RANGES[srcIso];
+            const tgtStart = SCRIPT_RANGES[tgtIso];
+
+            if (srcStart === undefined || tgtStart === undefined) return text;
+
+            const chars = [];
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                const code = c.charCodeAt(0);
+                let offset = code - srcStart;
+
+                if (offset >= 0 && offset <= 0x6F && c !== '\u0964' && c !== '\u0965') {
+                    if (tgtIso === 'ta') {
+                        offset = correctTamilMapping(offset);
+                    }
+                    chars.push(String.fromCharCode(tgtStart + offset));
+                } else {
+                    chars.push(c);
+                }
+            }
+            return chars.join("");
+        }
+
+        const MODEL_CONFIGS = {
+            "en-indic-200m": {
+                direction: "en-indic",
+                repoId: "hari31416/indictrans2-en-indic-dist-200M-ONNX",
+                label: "en-indic (200M Distilled)"
+            },
+            "en-indic-1b": {
+                direction: "en-indic",
+                repoId: "hari31416/indictrans2-en-indic-1B-ONNX",
+                label: "en-indic (1B Full)"
+            },
+            "indic-en-200m": {
+                direction: "indic-en",
+                repoId: "hari31416/indictrans2-indic-en-dist-200M-ONNX",
+                label: "indic-en (200M Distilled)"
+            },
+            "indic-en-1b": {
+                direction: "indic-en",
+                repoId: "hari31416/indictrans2-indic-en-1B-ONNX",
+                label: "indic-en (1B Full)"
+            },
+            "indic-indic-320m": {
+                direction: "indic-indic",
+                repoId: "hari31416/indictrans2-indic-indic-dist-320M-ONNX",
+                label: "indic-indic (320M)"
+            },
+            "indic-indic-1b": {
+                direction: "indic-indic",
+                repoId: "hari31416/indictrans2-indic-indic-1B-ONNX",
+                label: "indic-indic (1B)"
+            }
+        };
+
+        // DOM elements
+        const selectConfig = document.getElementById("model-config");
+        const selectPrecision = document.getElementById("model-precision");
+        const selectProvider = document.getElementById("ort-provider");
+        const btnLoad = document.getElementById("btn-load");
+        const btnUnload = document.getElementById("btn-unload");
+        
+        const loadingCard = document.getElementById("loading-card");
+        const loadingHeader = document.getElementById("loading-header");
+        const loadingBody = document.getElementById("loading-body");
+        const loadingNotes = document.getElementById("loading-notes");
+        const loadingSummaryBadge = document.getElementById("loading-summary-badge");
+        const chevronIcon = document.getElementById("chevron-icon");
+        const progressContainer = document.getElementById("progress-container");
+
+        // Toggle collapsible body
+        loadingHeader.addEventListener("click", () => {
+            const isHidden = loadingBody.classList.contains("hidden");
+            if (isHidden) {
+                loadingBody.classList.remove("hidden");
+                chevronIcon.classList.add("rotate-180");
+            } else {
+                loadingBody.classList.add("hidden");
+                chevronIcon.classList.remove("rotate-180");
+            }
+        });
+        
+        const badgeStatus = document.getElementById("badge-status");
+        const selectSrcLang = document.getElementById("src-lang");
+        const selectTgtLang = document.getElementById("tgt-lang");
+        const textareaSrc = document.getElementById("src-text");
+        const textareaTgt = document.getElementById("tgt-text");
+        const btnTranslate = document.getElementById("btn-translate");
+        const translationLoader = document.getElementById("translation-loader");
+        
+        const metricsContainer = document.getElementById("metrics");
+        const metricLoad = document.getElementById("metric-load");
+        const metricSpeed = document.getElementById("metric-speed");
+        const metricTotal = document.getElementById("metric-total");
+
+        // App state
+        let currentSessions = null;
+        let srcTokenizer = null;
+        let tgtTokenizer = null;
+        let tokenizerMeta = null;
+        let generationConfig = null;
+
+        // Configure languages selectors based on selected model
+        function updateLanguageSelectors() {
+            const configKey = selectConfig.value;
+            const config = MODEL_CONFIGS[configKey];
+            const direction = config.direction;
+
+            selectSrcLang.innerHTML = "";
+            selectTgtLang.innerHTML = "";
+
+            const indicCodes = Object.keys(LANGUAGES).filter(code => code !== "eng_Latn");
+
+            if (direction === "en-indic") {
+                // Src: English, Tgt: all Indic
+                selectSrcLang.innerHTML = `<option value="eng_Latn">English</option>`;
+                indicCodes.forEach(code => {
+                    selectTgtLang.innerHTML += `<option value="${code}">${LANGUAGES[code]}</option>`;
+                });
+            } else if (direction === "indic-en") {
+                // Src: all Indic, Tgt: English
+                indicCodes.forEach(code => {
+                    selectSrcLang.innerHTML += `<option value="${code}">${LANGUAGES[code]}</option>`;
+                });
+                selectTgtLang.innerHTML = `<option value="eng_Latn">English</option>`;
+            } else {
+                // indic-indic (both Indic)
+                indicCodes.forEach(code => {
+                    selectSrcLang.innerHTML += `<option value="${code}">${LANGUAGES[code]}</option>`;
+                    selectTgtLang.innerHTML += `<option value="${code}">${LANGUAGES[code]}</option>`;
+                });
+            }
+        }
+
+        selectConfig.addEventListener("change", updateLanguageSelectors);
+        updateLanguageSelectors();
+
+        // Automatically toggle provider default based on selected precision
+        const warningBanner = document.getElementById("quantization-warning");
+
+        function checkQuantizationWarning() {
+            const precision = selectPrecision.value;
+            const provider = selectProvider.value;
+            if ((precision === "int8" || precision === "q4f16") && provider === "webgpu") {
+                warningBanner.classList.remove("hidden");
+            } else {
+                warningBanner.classList.add("hidden");
+            }
+        }
+
+        function updateProviderDefault() {
+            const precision = selectPrecision.value;
+            if (precision === "int8" || precision === "q4f16") {
+                selectProvider.value = "wasm";
+            } else {
+                selectProvider.value = "webgpu";
+            }
+            checkQuantizationWarning();
+        }
+        
+        selectPrecision.addEventListener("change", updateProviderDefault);
+        selectProvider.addEventListener("change", checkQuantizationWarning);
+        updateProviderDefault();
+
+        // Check if model has external data files (.data sidecars)
+        function hasExternalData(configKey, precision) {
+            return configKey.endsWith('-1b') && (precision === 'fp32' || precision === 'fp16');
+        }
+
+        // General cache-backed fetch for JSON or other config files
+        async function fetchWithCache(url) {
+            if (typeof window.caches === 'undefined') {
+                return fetch(url);
+            }
+            const cacheName = "indictrans2-onnx-cache";
+            const cache = await caches.open(cacheName);
+            const cachedResponse = await cache.match(url);
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            const response = await fetch(url);
+            if (response.ok) {
+                try {
+                    await cache.put(url, response.clone());
+                } catch (e) {
+                    console.warn("Failed to store in cache:", e);
+                }
+            }
+            return response;
+        }
+
+        // Fetch helper to fetch binary file with progress (backed by Cache Storage)
+        async function fetchWithProgress(url, label, progressCallback) {
+            const cacheName = "indictrans2-onnx-cache";
+            const useCache = typeof window.caches !== 'undefined';
+            
+            if (useCache) {
+                const cache = await caches.open(cacheName);
+                const cachedResponse = await cache.match(url);
+                if (cachedResponse) {
+                    const contentLength = cachedResponse.headers.get("content-length");
+                    const total = contentLength ? parseInt(contentLength, 10) : 0;
+                    
+                    const reader = cachedResponse.body.getReader();
+                    const chunks = [];
+                    let loaded = 0;
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        chunks.push(value);
+                        loaded += value.length;
+                        if (total) {
+                            progressCallback(Math.round((loaded / total) * 100));
+                        }
+                    }
+                    
+                    const all = new Uint8Array(loaded);
+                    let offset = 0;
+                    for (const chunk of chunks) {
+                        all.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+                    progressCallback(100);
+                    return all.buffer;
+                }
+            }
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch file: ${response.statusText}`);
+            }
+            
+            const contentLength = response.headers.get("content-length");
+            if (!contentLength) {
+                const buffer = await response.arrayBuffer();
+                if (useCache) {
+                    try {
+                        const cache = await caches.open(cacheName);
+                        await cache.put(url, new Response(buffer));
+                    } catch (e) {
+                        console.warn("Failed to store in cache:", e);
+                    }
+                }
+                progressCallback(100);
+                return buffer;
+            }
+
+            const total = parseInt(contentLength, 10);
+            let loaded = 0;
+            const reader = response.body.getReader();
+            const chunks = [];
+
+            while(true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                loaded += value.length;
+                progressCallback(Math.round((loaded / total) * 100));
+            }
+
+            const all = new Uint8Array(loaded);
+            let offset = 0;
+            for (const chunk of chunks) {
+                all.set(chunk, offset);
+                offset += chunk.length;
+            }
+            
+            if (useCache) {
+                try {
+                    const cache = await caches.open(cacheName);
+                    await cache.put(url, new Response(all.buffer, {
+                        headers: {
+                            "content-length": loaded.toString(),
+                            "content-type": "application/octet-stream"
+                        }
+                    }));
+                } catch (e) {
+                    console.warn("Failed to save to cache:", e);
+                }
+            }
+            
+            return all.buffer;
+        }
+
+        // Setup individual UI progress bar
+        function createProgressBar(id, name) {
+            const div = document.createElement("div");
+            div.id = `progress-item-${id}`;
+            div.className = "space-y-1.5";
+            div.innerHTML = `
+                <div class="flex justify-between text-xs font-semibold text-zinc-300">
+                    <span>${name}</span>
+                    <span id="progress-val-${id}">0%</span>
+                </div>
+                <div class="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-800">
+                    <div id="progress-bar-${id}" class="bg-teal-500 h-full w-0 transition-all duration-150"></div>
+                </div>
+            `;
+            progressContainer.appendChild(div);
+        }
+
+        function updateProgressBar(id, progress) {
+            const bar = document.getElementById(`progress-bar-${id}`);
+            const text = document.getElementById(`progress-val-${id}`);
+            if (bar && text) {
+                bar.style.width = `${progress}%`;
+                text.innerText = `${progress}%`;
+            }
+        }
+
+        // Tokenizer interception hack
+        async function loadTokenizerFromUrl(url, modelName) {
+            const originalFetch = window.fetch;
+            const response = await fetchWithCache(url);
+            const data = await response.json();
+
+            window.fetch = async (fetchUrl, options) => {
+                const urlStr = fetchUrl.toString();
+                if (urlStr.endsWith('tokenizer.json')) {
+                    return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } });
+                }
+                if (urlStr.endsWith('tokenizer_config.json')) {
+                    return new Response(JSON.stringify({ tokenizer_class: 'PreTrainedTokenizerFast' }), { headers: { 'Content-Type': 'application/json' } });
+                }
+                return originalFetch(fetchUrl, options);
+            };
+
+            const tok = await AutoTokenizer.from_pretrained(modelName);
+            window.fetch = originalFetch; // restore fetch
+            return tok;
+        }
+
+        // Model Load trigger
+        btnLoad.addEventListener("click", async () => {
+            const configKey = selectConfig.value;
+            const config = MODEL_CONFIGS[configKey];
+            const precision = selectPrecision.value;
+            const provider = selectProvider.value;
+
+            // Determine repo path
+            const isFp32 = (precision === "fp32");
+            const suffix = isFp32 ? "" : `-${precision}`;
+            const repoId = `${config.repoId}${suffix}`;
+            const baseUrl = `https://huggingface.co/${repoId}/resolve/main`;
+
+            // Reset UI
+            progressContainer.innerHTML = "";
+            loadingCard.classList.remove("hidden");
+            loadingBody.classList.remove("hidden");
+            chevronIcon.classList.add("rotate-180");
+            loadingSummaryBadge.classList.add("hidden");
+            btnLoad.disabled = true;
+            btnLoad.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading Model...
+            `;
+            selectConfig.disabled = true;
+            selectPrecision.disabled = true;
+            selectProvider.disabled = true;
+
+            // Scroll down to the loading card
+            setTimeout(() => {
+                loadingCard.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 100);
+
+            const isExternal = hasExternalData(configKey, precision);
+            if (isExternal) {
+                loadingNotes.innerText = "Large model detected. Loading ONNX files directly via session URL to resolve split data sidecars...";
+            } else {
+                loadingNotes.innerText = "Downloading ONNX files directly to browser memory...";
+            }
+
+            const startTime = performance.now();
+
+            try {
+                // 1. Fetch configs and metadata
+                createProgressBar("meta", "Tokenizer Meta & Configurations");
+                updateProgressBar("meta", 10);
+
+                const metaResponse = await fetchWithCache(`${baseUrl}/tokenizer_meta.json`);
+                tokenizerMeta = await metaResponse.json();
+                updateProgressBar("meta", 50);
+
+                let genConfigResponse = await fetchWithCache(`${baseUrl}/generation_config.json`);
+                generationConfig = await genConfigResponse.json();
+                updateProgressBar("meta", 100);
+
+                // 2. Fetch tokenizers
+                createProgressBar("tok-src", "Source Tokenizer");
+                srcTokenizer = await loadTokenizerFromUrl(`${baseUrl}/tokenizer_src.json`, `${configKey}-${precision}-src`);
+                updateProgressBar("tok-src", 100);
+
+                createProgressBar("tok-tgt", "Target Tokenizer");
+                tgtTokenizer = await loadTokenizerFromUrl(`${baseUrl}/tokenizer_tgt.json`, `${configKey}-${precision}-tgt`);
+                updateProgressBar("tok-tgt", 100);
+
+                // 3. Load ONNX sessions
+                const ortOptions = {
+                    executionProviders: [provider, 'wasm']
+                };
+
+                let encSession, decSession, decPastSession;
+
+                if (isExternal) {
+                    // Load directly from URL
+                    createProgressBar("enc", "Encoder ONNX Graph");
+                    encSession = await ort.InferenceSession.create(`${baseUrl}/encoder_model.onnx`, ortOptions);
+                    updateProgressBar("enc", 100);
+
+                    createProgressBar("dec", "Decoder ONNX Graph");
+                    decSession = await ort.InferenceSession.create(`${baseUrl}/decoder_model.onnx`, ortOptions);
+                    updateProgressBar("dec", 100);
+
+                    createProgressBar("dec_past", "Decoder with Past ONNX Graph");
+                    decPastSession = await ort.InferenceSession.create(`${baseUrl}/decoder_with_past_model.onnx`, ortOptions);
+                    updateProgressBar("dec_past", 100);
+                } else {
+                    // Fetch buffers with progress bars
+                    createProgressBar("enc", "Encoder Model");
+                    const encBuffer = await fetchWithProgress(`${baseUrl}/encoder_model.onnx`, "Encoder Model", (p) => updateProgressBar("enc", p));
+                    encSession = await ort.InferenceSession.create(encBuffer, ortOptions);
+
+                    createProgressBar("dec", "Decoder Model");
+                    const decBuffer = await fetchWithProgress(`${baseUrl}/decoder_model.onnx`, "Decoder Model", (p) => updateProgressBar("dec", p));
+                    decSession = await ort.InferenceSession.create(decBuffer, ortOptions);
+
+                    createProgressBar("dec_past", "Decoder with Past");
+                    const decPastBuffer = await fetchWithProgress(`${baseUrl}/decoder_with_past_model.onnx`, "Decoder with Past", (p) => updateProgressBar("dec_past", p));
+                    decPastSession = await ort.InferenceSession.create(decPastBuffer, ortOptions);
+                }
+
+                const numLayers = (decSession.outputNames.length - 1) / 4;
+
+                currentSessions = {
+                    enc: encSession,
+                    dec: decSession,
+                    decPast: decPastSession,
+                    numLayers: numLayers
+                };
+
+                const loadTime = ((performance.now() - startTime) / 1000).toFixed(2);
+
+                // Update UI state to Connected
+                badgeStatus.innerText = "Ready";
+                badgeStatus.className = "px-2 py-0.5 text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-900 rounded-full";
+                
+                selectSrcLang.disabled = false;
+                selectTgtLang.disabled = false;
+                textareaSrc.disabled = false;
+                btnTranslate.disabled = false;
+                btnUnload.disabled = false;
+                btnLoad.innerHTML = "Load Model";
+
+                // Load metric latency
+                metricsContainer.classList.remove("hidden");
+                metricLoad.innerText = `${loadTime}s`;
+                metricSpeed.innerText = "-";
+                metricTotal.innerText = "-";
+
+                loadingNotes.innerText = "All models loaded and sessions initialized successfully! (Click header to toggle logs)";
+                setTimeout(() => {
+                    loadingBody.classList.add("hidden");
+                    chevronIcon.classList.remove("rotate-180");
+                    loadingSummaryBadge.classList.remove("hidden");
+                }, 800);
+
+            } catch (err) {
+                console.error("Failed to load sessions:", err);
+                loadingNotes.innerText = `Error loading model: ${err.message}`;
+                btnLoad.disabled = false;
+                btnLoad.innerHTML = "Load Model";
+                selectConfig.disabled = false;
+                selectPrecision.disabled = false;
+                selectProvider.disabled = false;
+            }
+        });
+
+        // Unload trigger
+        btnUnload.addEventListener("click", () => {
+            currentSessions = null;
+            srcTokenizer = null;
+            tgtTokenizer = null;
+            tokenizerMeta = null;
+            generationConfig = null;
+
+            badgeStatus.innerText = "Disconnected";
+            badgeStatus.className = "px-2 py-0.5 text-xs font-semibold bg-red-950 text-red-400 border border-red-900 rounded-full";
+            
+            selectSrcLang.disabled = true;
+            selectTgtLang.disabled = true;
+            textareaSrc.disabled = true;
+            btnTranslate.disabled = true;
+            btnUnload.disabled = true;
+            btnLoad.disabled = false;
+            selectConfig.disabled = false;
+            selectPrecision.disabled = false;
+            selectProvider.disabled = false;
+
+            loadingCard.classList.add("hidden");
+            loadingBody.classList.add("hidden");
+            loadingSummaryBadge.classList.add("hidden");
+            chevronIcon.classList.remove("rotate-180");
+            metricsContainer.classList.add("hidden");
+            textareaSrc.value = "";
+            textareaTgt.value = "";
+        });
+
+        // Build the past_key_values input dict from previous step outputs
+        function getPastFeed(prevOutputs, numLayers) {
+            const feed = {};
+            for (let i = 0; i < numLayers; i++) {
+                feed[`past_key_values.${i}.decoder.key`] = prevOutputs[`present.${i}.decoder.key`];
+                feed[`past_key_values.${i}.decoder.value`] = prevOutputs[`present.${i}.decoder.value`];
+                feed[`past_key_values.${i}.encoder.key`] = prevOutputs[`present.${i}.encoder.key`];
+                feed[`past_key_values.${i}.encoder.value`] = prevOutputs[`present.${i}.encoder.value`];
+            }
+            return feed;
+        }
+
+        // Translation Runner
+        btnTranslate.addEventListener("click", async () => {
+            if (!currentSessions) return;
+
+            const text = textareaSrc.value.trim();
+            if (!text) return;
+
+            const srcLang = selectSrcLang.value;
+            const tgtLang = selectTgtLang.value;
+
+            translationLoader.classList.remove("hidden");
+            btnTranslate.disabled = true;
+
+            const startTime = performance.now();
+            let ttftTime = null;
+            let totalTokens = 0;
+
+            try {
+                // 1. Encode source
+                let processedText = text;
+                if (srcLang !== "eng_Latn") {
+                    processedText = transliterate(text, srcLang, "hin_Deva");
+                }
+
+                // We tokenize the language tags and text separately to work around a Transformers.js
+                // BPE pre-tokenization bug where prefix spaces are dropped after splitting added tokens.
+                const srcLangRes = await srcTokenizer(srcLang, { add_special_tokens: false });
+                const srcLangId = Number(srcLangRes.input_ids.data[0]);
+
+                const tgtLangRes = await srcTokenizer(tgtLang, { add_special_tokens: false });
+                const tgtLangId = Number(tgtLangRes.input_ids.data[0]);
+
+                const preparedText = processedText.startsWith(" ") ? processedText : " " + processedText;
+                const textRes = await srcTokenizer(preparedText);
+                
+                const textIds = Array.from(textRes.input_ids.data).map(Number);
+                const safeInputIds = [srcLangId, tgtLangId, ...textIds].map(id => {
+                    return id < tokenizerMeta.src_dict_size ? id : Number(tokenizerMeta.unk_id);
+                });
+
+                const inputIdsTensor = new ort.Tensor('int64', BigInt64Array.from(safeInputIds.map(BigInt)), [1, safeInputIds.length]);
+
+                // For attention mask: the language tags are not masked, so we prepend 1s for them.
+                const textMaskArray = Array.from(textRes.attention_mask.data).map(Number);
+                const attnMaskArray = [1, 1, ...textMaskArray];
+                const attnMaskTensor = new ort.Tensor('int64', BigInt64Array.from(attnMaskArray.map(BigInt)), [1, attnMaskArray.length]);
+
+                // Run Encoder
+                const encOut = await currentSessions.enc.run({
+                    input_ids: inputIdsTensor,
+                    attention_mask: attnMaskTensor
+                });
+                const encHiddenState = encOut.last_hidden_state;
+
+                // Decode config parameters
+                const decoderStartId = BigInt(generationConfig.decoder_start_token_id || 2);
+                const eosId = BigInt(generationConfig.eos_token_id || 2);
+
+                let decoderInputIds = new ort.Tensor('int64', BigInt64Array.from([decoderStartId]), [1, 1]);
+                const outputIds = [Number(decoderStartId)];
+                let pastOutputs = null;
+
+                const maxNewTokens = 128;
+
+                for (let step = 0; step < maxNewTokens; step++) {
+                    let decOut;
+                    if (step === 0) {
+                        decOut = await currentSessions.dec.run({
+                            input_ids: decoderInputIds,
+                            encoder_hidden_states: encHiddenState,
+                            encoder_attention_mask: attnMaskTensor
+                        });
+                    } else {
+                        const feeds = {
+                            input_ids: decoderInputIds,
+                            encoder_attention_mask: attnMaskTensor,
+                            ...getPastFeed(pastOutputs, currentSessions.numLayers)
+                        };
+                        decOut = await currentSessions.decPast.run(feeds);
+                    }
+
+                    if (step === 0) {
+                        ttftTime = performance.now() - startTime;
+                    }
+
+                    const logits = decOut["logits"];
+                    pastOutputs = decOut;
+
+                    // Argmax last token logits
+                    const dims = logits.dims;
+                    const seqLen = dims[1];
+                    const vocabSize = dims[2];
+                    const offset = (seqLen - 1) * vocabSize;
+                    const logitsData = logits.data;
+
+                    let maxVal = -Infinity;
+                    let nextId = 0;
+                    for (let v = 0; v < vocabSize; v++) {
+                        const val = logitsData[offset + v];
+                        if (val > maxVal) {
+                            maxVal = val;
+                            nextId = v;
+                        }
+                    }
+
+                    outputIds.push(nextId);
+                    totalTokens++;
+
+                    if (BigInt(nextId) === eosId) {
+                        break;
+                    }
+
+                    decoderInputIds = new ort.Tensor('int64', BigInt64Array.from([BigInt(nextId)]), [1, 1]);
+                }
+
+                // 2. Decode outputs
+                const tgtDictSize = tokenizerMeta.tgt_dict_size;
+                const safeOutputIds = outputIds.map(id => (id < tgtDictSize ? id : Number(tokenizerMeta.unk_id)));
+                const decodedText = await tgtTokenizer.decode(safeOutputIds, { skip_special_tokens: true });
+
+                let finalOutput = decodedText;
+                if (tgtLang !== "eng_Latn") {
+                    finalOutput = transliterate(decodedText, "hin_Deva", tgtLang);
+                }
+                textareaTgt.value = finalOutput;
+
+                // 3. Update stats metrics
+                const totalTimeMs = performance.now() - startTime;
+                const speed = (totalTokens / ((totalTimeMs - (ttftTime || 0)) / 1000)).toFixed(1);
+                
+                metricSpeed.innerText = `${speed} tok/s`;
+                metricTotal.innerText = `${(totalTimeMs / 1000).toFixed(2)}s`;
+
+            } catch (err) {
+                console.error("Translation failed:", err);
+                textareaTgt.value = `Translation failed: ${err.message}`;
+            } finally {
+                translationLoader.classList.add("hidden");
+                btnTranslate.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
