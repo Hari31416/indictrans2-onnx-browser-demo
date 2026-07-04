@@ -1,3 +1,12 @@
+---
+title: IndicTrans2 ONNX Browser Demo
+emoji: 🌐
+colorFrom: green
+colorTo: blue
+sdk: static
+pinned: false
+---
+
 # IndicTrans2 ONNX Browser Demo
 
 This is a web playground that runs optimized IndicTrans2 translation models entirely in the browser using ONNX Runtime Web and Hugging Face Transformers.js. All execution happens on your GPU or CPU without server-side APIs.
