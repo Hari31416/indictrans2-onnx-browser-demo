@@ -71,29 +71,52 @@ function updateLanguageSelectors() {
   }
 }
 
+const MODEL_SIZES = {
+  'en-indic-200m': {
+    'q4f16': '~658 MB',
+    'int8': '~487 MB',
+    'fp16': '~927 MB',
+    'fp32': '~1.8 GB'
+  },
+  'en-indic-1b': {
+    'q4f16': '~1.7 GB',
+    'int8': '~1.7 GB',
+    'fp16': '~3.4 GB',
+    'fp32': '~6.7 GB'
+  },
+  'indic-en-200m': {
+    'q4f16': '~393 MB',
+    'int8': '~354 MB',
+    'fp16': '~662 MB',
+    'fp32': '~1.3 GB'
+  },
+  'indic-en-1b': {
+    'q4f16': '~1.2 GB',
+    'int8': '~1.4 GB',
+    'fp16': '~2.8 GB',
+    'fp32': '~5.6 GB'
+  },
+  'indic-indic-320m': {
+    'q4f16': '~770 MB',
+    'int8': '~556 MB',
+    'fp16': '~1.0 GB',
+    'fp32': '~2.0 GB'
+  },
+  'indic-indic-1b': {
+    'q4f16': '~1.9 GB',
+    'int8': '~1.8 GB',
+    'fp16': '~3.6 GB',
+    'fp32': '~7.0 GB'
+  }
+}
+
 function updateModelSizeDisplay() {
   const config = selectConfig.value
   const precision = selectPrecision.value
   const displayElement = document.getElementById('model-size-display')
   if (!displayElement) return
 
-  let sizeStr = ''
-  if (config.includes('200m')) {
-    if (precision === 'q4f16') sizeStr = '~170 MB'
-    else if (precision === 'int8') sizeStr = '~210 MB'
-    else if (precision === 'fp16') sizeStr = '~410 MB'
-    else sizeStr = '~820 MB'
-  } else if (config.includes('320m')) {
-    if (precision === 'q4f16') sizeStr = '~240 MB'
-    else if (precision === 'int8') sizeStr = '~330 MB'
-    else if (precision === 'fp16') sizeStr = '~640 MB'
-    else sizeStr = '~1.2 GB'
-  } else if (config.includes('1b')) {
-    if (precision === 'q4f16') sizeStr = '~900 MB'
-    else if (precision === 'int8') sizeStr = '~1.1 GB'
-    else if (precision === 'fp16') sizeStr = '~2.1 GB'
-    else sizeStr = '~4.2 GB'
-  }
+  const sizeStr = (MODEL_SIZES[config] && MODEL_SIZES[config][precision]) || 'Unknown size'
   displayElement.textContent = sizeStr
 }
 
