@@ -71,7 +71,36 @@ function updateLanguageSelectors() {
   }
 }
 
-selectConfig.addEventListener('change', updateLanguageSelectors)
+function updateModelSizeDisplay() {
+  const config = selectConfig.value
+  const precision = selectPrecision.value
+  const displayElement = document.getElementById('model-size-display')
+  if (!displayElement) return
+
+  let sizeStr = ''
+  if (config.includes('200m')) {
+    if (precision === 'q4f16') sizeStr = '~170 MB'
+    else if (precision === 'int8') sizeStr = '~210 MB'
+    else if (precision === 'fp16') sizeStr = '~410 MB'
+    else sizeStr = '~820 MB'
+  } else if (config.includes('320m')) {
+    if (precision === 'q4f16') sizeStr = '~240 MB'
+    else if (precision === 'int8') sizeStr = '~330 MB'
+    else if (precision === 'fp16') sizeStr = '~640 MB'
+    else sizeStr = '~1.2 GB'
+  } else if (config.includes('1b')) {
+    if (precision === 'q4f16') sizeStr = '~900 MB'
+    else if (precision === 'int8') sizeStr = '~1.1 GB'
+    else if (precision === 'fp16') sizeStr = '~2.1 GB'
+    else sizeStr = '~4.2 GB'
+  }
+  displayElement.textContent = sizeStr
+}
+
+selectConfig.addEventListener('change', () => {
+  updateLanguageSelectors()
+  updateModelSizeDisplay()
+})
 updateLanguageSelectors()
 
 function checkQuantizationWarning() {
@@ -94,9 +123,13 @@ function updateProviderDefault() {
   checkQuantizationWarning()
 }
 
-selectPrecision.addEventListener('change', updateProviderDefault)
+selectPrecision.addEventListener('change', () => {
+  updateProviderDefault()
+  updateModelSizeDisplay()
+})
 selectProvider.addEventListener('change', checkQuantizationWarning)
 updateProviderDefault()
+updateModelSizeDisplay()
 
 // Setup individual UI progress bar
 function createProgressBar(id, name) {

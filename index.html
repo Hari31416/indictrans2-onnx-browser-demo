@@ -107,6 +107,17 @@
                 <p>Running INT8 or Q4F16 quantized models on WebGPU frequently causes outputs to fail or degenerate into gibberish due to browser shader/driver bugs. WASM is strongly recommended for quantized tiers.</p>
             </div>
 
+            <!-- Estimated Model Size / Note -->
+            <div class="text-xs text-zinc-400 bg-zinc-950/40 border border-zinc-800/60 rounded-lg p-3 space-y-1">
+                <p class="flex justify-between">
+                    <span>Estimated download size:</span>
+                    <span id="model-size-display" class="font-bold text-teal-400">~210 MB</span>
+                </p>
+                <p class="text-zinc-500 text-[10px]">
+                    Note: Since the models run entirely client-side, the weights must be downloaded and cached in your browser storage. First-time loading may take some time depending on your connection. Subsequent loads are instant.
+                </p>
+            </div>
+
             <!-- Loading Buttons -->
             <div class="flex gap-4">
                 <button id="btn-load" class="flex-1 py-3 px-6 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition shadow-lg shadow-teal-500/10 disabled:opacity-40 disabled:pointer-events-none">
