@@ -209,12 +209,8 @@ btnLoad.addEventListener('click', async () => {
     loadingCard.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, 100)
 
-  const isLargeModel = configKey.endsWith('-1b') && (precision === 'fp32' || precision === 'fp16')
-  if (isLargeModel) {
-    loadingNotes.innerText = 'Large model detected. Loading ONNX files directly via session URL to resolve split data sidecars...'
-  } else {
-    loadingNotes.innerText = 'Downloading ONNX files directly to browser memory...'
-  }
+  loadingNotes.innerText =
+    'Downloading ONNX graph protos and weight sidecars (.onnx.data) to browser memory...'
 
   const startTime = performance.now()
 

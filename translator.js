@@ -53,9 +53,18 @@ export function isModelLoaded() {
   return currentSessions !== null
 }
 
-function hasExternalData(configKey, precision) {
-  return configKey.endsWith('-1b') && (precision === 'fp32' || precision === 'fp16')
-}
+const ONNX_GRAPH_FILES = [
+  'encoder_model.onnx',
+  'decoder_model.onnx',
+  'decoder_with_past_model.onnx',
+]
+
+const EXTERNAL_DATA_CANDIDATES = [
+  'encoder_model.onnx.data',
+  'decoder_shared.onnx.data',
+  'decoder_model.onnx.data',
+  'decoder_with_past_model.onnx.data',
+]
 
 async function fetchWithCache(url) {
   if (typeof window.caches === 'undefined') {
@@ -203,14 +212,66 @@ function getPastFeed(prevOutputs, numLayers) {
   return feed
 }
 
+async function probeExternalDataUrls(baseUrl) {
+  const root = baseUrl.replace(/\/$/, '')
+  const found = []
+  for (const name of EXTERNAL_DATA_CANDIDATES) {
+    try {
+      const res = await fetch(`${root}/${name}`, { method: 'HEAD' })
+      if (res.ok) {
+        found.push(name)
+      }
+    } catch {
+      // ignore unreachable sidecars
+    }
+  }
+  return found
+}
+
+function buildExternalDataFromBuffers(buffers) {
+  const externalData = []
+  for (const [name, bytes] of buffers) {
+    externalData.push({ path: name, data: bytes })
+    if (!name.startsWith('./')) {
+      externalData.push({ path: `./${name}`, data: bytes })
+    }
+  }
+  return externalData
+}
+
+async function fetchExternalDataSidecars(baseUrl, onProgress) {
+  const sidecarNames = await probeExternalDataUrls(baseUrl)
+  if (sidecarNames.length === 0) {
+    return []
+  }
+
+  const buffers = new Map()
+  for (const name of sidecarNames) {
+    const progressId = `data-${name.replace(/\./g, '-')}`
+    const buffer = await fetchWithProgress(`${baseUrl}/${name}`, (p) => {
+      onProgress(progressId, name, p)
+    })
+    buffers.set(name, new Uint8Array(buffer))
+  }
+
+  ort.env.wasm.numThreads = 1
+  return buildExternalDataFromBuffers(buffers)
+}
+
+async function createSessionFromBuffer(modelBuffer, ortOptions, externalData) {
+  const options = { ...ortOptions }
+  if (externalData.length > 0) {
+    options.externalData = externalData
+  }
+  return ort.InferenceSession.create(modelBuffer, options)
+}
+
 export async function loadModel(configKey, precision, provider, onProgress) {
   const config = MODEL_CONFIGS[configKey]
   const isFp32 = (precision === 'fp32')
   const suffix = isFp32 ? '' : `-${precision}`
   const repoId = `${config.repoId}${suffix}`
   const baseUrl = `https://huggingface.co/${repoId}/resolve/main`
-
-  const isExternal = hasExternalData(configKey, precision)
 
   // 1. Fetch configs and metadata
   onProgress('meta', 'Tokenizer Meta & Configurations', 10)
@@ -231,46 +292,41 @@ export async function loadModel(configKey, precision, provider, onProgress) {
   tgtTokenizer = await loadTokenizerFromUrl(`${baseUrl}/tokenizer_tgt.json`, `${configKey}-${precision}-tgt`)
   onProgress('tok-tgt', 'Target Tokenizer', 100)
 
-  // 3. Load ONNX sessions
+  // 3. Fetch weight sidecars (optimized bundles externalize weights to .onnx.data)
+  onProgress('sidecars', 'Weight sidecars', 0)
+  const externalData = await fetchExternalDataSidecars(baseUrl, onProgress)
+  onProgress('sidecars', 'Weight sidecars', 100)
+
+  // 4. Load ONNX sessions (graph protos + externalData for WASM)
   const ortOptions = {
-    executionProviders: [provider, 'wasm']
+    executionProviders: [provider, 'wasm'],
   }
 
-  let encSession, decSession, decPastSession
-
-  if (isExternal) {
-    onProgress('enc', 'Encoder ONNX Graph', 10)
-    encSession = await ort.InferenceSession.create(`${baseUrl}/encoder_model.onnx`, ortOptions)
-    onProgress('enc', 'Encoder ONNX Graph', 100)
-
-    onProgress('dec', 'Decoder ONNX Graph', 10)
-    decSession = await ort.InferenceSession.create(`${baseUrl}/decoder_model.onnx`, ortOptions)
-    onProgress('dec', 'Decoder ONNX Graph', 100)
-
-    onProgress('dec_past', 'Decoder with Past ONNX Graph', 10)
-    decPastSession = await ort.InferenceSession.create(`${baseUrl}/decoder_with_past_model.onnx`, ortOptions)
-    onProgress('dec_past', 'Decoder with Past ONNX Graph', 100)
-  } else {
-    onProgress('enc', 'Encoder Model', 0)
-    const encBuffer = await fetchWithProgress(`${baseUrl}/encoder_model.onnx`, (p) => onProgress('enc', 'Encoder Model', p))
-    encSession = await ort.InferenceSession.create(encBuffer, ortOptions)
-
-    onProgress('dec', 'Decoder Model', 0)
-    const decBuffer = await fetchWithProgress(`${baseUrl}/decoder_model.onnx`, (p) => onProgress('dec', 'Decoder Model', p))
-    decSession = await ort.InferenceSession.create(decBuffer, ortOptions)
-
-    onProgress('dec_past', 'Decoder with Past', 0)
-    const decPastBuffer = await fetchWithProgress(`${baseUrl}/decoder_with_past_model.onnx`, (p) => onProgress('dec_past', 'Decoder with Past', p))
-    decPastSession = await ort.InferenceSession.create(decPastBuffer, ortOptions)
+  const sessions = {}
+  const progressIds = {
+    'encoder_model.onnx': ['enc', 'Encoder Model'],
+    'decoder_model.onnx': ['dec', 'Decoder Model'],
+    'decoder_with_past_model.onnx': ['dec_past', 'Decoder with Past'],
   }
 
+  for (const graphName of ONNX_GRAPH_FILES) {
+    const [progressId, label] = progressIds[graphName]
+    onProgress(progressId, label, 0)
+    const graphBuffer = await fetchWithProgress(`${baseUrl}/${graphName}`, (p) => {
+      onProgress(progressId, label, p)
+    })
+    sessions[graphName] = await createSessionFromBuffer(graphBuffer, ortOptions, externalData)
+    onProgress(progressId, label, 100)
+  }
+
+  const decSession = sessions['decoder_model.onnx']
   const numLayers = (decSession.outputNames.length - 1) / 4
 
   currentSessions = {
-    enc: encSession,
+    enc: sessions['encoder_model.onnx'],
     dec: decSession,
-    decPast: decPastSession,
-    numLayers: numLayers
+    decPast: sessions['decoder_with_past_model.onnx'],
+    numLayers,
   }
 }
 
@@ -280,6 +336,7 @@ export function unloadModel() {
   tgtTokenizer = null
   tokenizerMeta = null
   generationConfig = null
+  ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 1)
 }
 
 export async function translate(text, srcLang, tgtLang, onStep) {
