@@ -59,12 +59,12 @@ const ONNX_GRAPH_FILES = [
   'decoder_with_past_model.onnx',
 ]
 
-const EXTERNAL_DATA_CANDIDATES = [
-  'encoder_model.onnx.data',
-  'decoder_shared.onnx.data',
-  'decoder_model.onnx.data',
-  'decoder_with_past_model.onnx.data',
-]
+function getExternalDataFilenames(configKey, precision) {
+  if (configKey === 'en-indic-200m' && precision === 'q4f16') {
+    return ['decoder_shared.onnx.data']
+  }
+  return ['encoder_model.onnx.data', 'decoder_shared.onnx.data']
+}
 
 async function fetchWithCache(url) {
   if (typeof window.caches === 'undefined') {
@@ -212,22 +212,6 @@ function getPastFeed(prevOutputs, numLayers) {
   return feed
 }
 
-async function probeExternalDataUrls(baseUrl) {
-  const root = baseUrl.replace(/\/$/, '')
-  const found = []
-  for (const name of EXTERNAL_DATA_CANDIDATES) {
-    try {
-      const res = await fetch(`${root}/${name}`, { method: 'HEAD' })
-      if (res.ok) {
-        found.push(name)
-      }
-    } catch {
-      // ignore unreachable sidecars
-    }
-  }
-  return found
-}
-
 function buildExternalDataFromBuffers(buffers) {
   const externalData = []
   for (const [name, bytes] of buffers) {
@@ -239,8 +223,8 @@ function buildExternalDataFromBuffers(buffers) {
   return externalData
 }
 
-async function fetchExternalDataSidecars(baseUrl, onProgress) {
-  const sidecarNames = await probeExternalDataUrls(baseUrl)
+async function fetchExternalDataSidecars(baseUrl, configKey, precision, onProgress) {
+  const sidecarNames = getExternalDataFilenames(configKey, precision)
   if (sidecarNames.length === 0) {
     return []
   }
@@ -294,7 +278,7 @@ export async function loadModel(configKey, precision, provider, onProgress) {
 
   // 3. Fetch weight sidecars (optimized bundles externalize weights to .onnx.data)
   onProgress('sidecars', 'Weight sidecars', 0)
-  const externalData = await fetchExternalDataSidecars(baseUrl, onProgress)
+  const externalData = await fetchExternalDataSidecars(baseUrl, configKey, precision, onProgress)
   onProgress('sidecars', 'Weight sidecars', 100)
 
   // 4. Load ONNX sessions (graph protos + externalData for WASM)

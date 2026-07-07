@@ -73,40 +73,40 @@ function updateLanguageSelectors() {
 
 const MODEL_SIZES = {
   'en-indic-200m': {
-    'q4f16': '~658 MB',
-    'int8': '~487 MB',
-    'fp16': '~927 MB',
-    'fp32': '~1.8 GB'
+    'q4f16': '~373 MB',
+    'int8': '~295 MB',
+    'fp16': '~552 MB',
+    'fp32': '~1.1 GB'
   },
   'en-indic-1b': {
-    'q4f16': '~1.7 GB',
-    'int8': '~1.7 GB',
-    'fp16': '~3.4 GB',
-    'fp32': '~6.7 GB'
+    'q4f16': '~1.0 GB',
+    'int8': '~1.1 GB',
+    'fp16': '~2.1 GB',
+    'fp32': '~4.2 GB'
   },
   'indic-en-200m': {
-    'q4f16': '~393 MB',
-    'int8': '~354 MB',
-    'fp16': '~662 MB',
-    'fp32': '~1.3 GB'
+    'q4f16': '~285 MB',
+    'int8': '~250 MB',
+    'fp16': '~464 MB',
+    'fp32': '~899 MB'
   },
   'indic-en-1b': {
-    'q4f16': '~1.2 GB',
-    'int8': '~1.4 GB',
-    'fp16': '~2.8 GB',
-    'fp32': '~5.6 GB'
+    'q4f16': '~854 MB',
+    'int8': '~1.0 GB',
+    'fp16': '~1.9 GB',
+    'fp32': '~3.8 GB'
   },
   'indic-indic-320m': {
-    'q4f16': '~770 MB',
-    'int8': '~556 MB',
-    'fp16': '~1.0 GB',
-    'fp32': '~2.0 GB'
+    'q4f16': '~480 MB',
+    'int8': '~358 MB',
+    'fp16': '~659 MB',
+    'fp32': '~1.2 GB'
   },
   'indic-indic-1b': {
-    'q4f16': '~1.9 GB',
-    'int8': '~1.8 GB',
-    'fp16': '~3.6 GB',
-    'fp32': '~7.0 GB'
+    'q4f16': '~1.2 GB',
+    'int8': '~1.2 GB',
+    'fp16': '~2.3 GB',
+    'fp32': '~4.5 GB'
   }
 }
 
@@ -295,6 +295,19 @@ btnTranslate.addEventListener('click', async () => {
 
   translationLoader.classList.remove('hidden')
   btnTranslate.disabled = true
+  btnTranslate.textContent = 'Translating...'
+
+  // Disable controls during translation to gray them out and prevent concurrent modifications
+  textareaSrc.disabled = true
+  selectSrcLang.disabled = true
+  selectTgtLang.disabled = true
+  selectConfig.disabled = true
+  selectPrecision.disabled = true
+  selectProvider.disabled = true
+  btnUnload.disabled = true
+
+  // Yield to the browser event loop to guarantee a repaint of the disabled states
+  await new Promise(resolve => setTimeout(resolve, 50))
 
   try {
     const result = await translate(text, srcLang, tgtLang)
@@ -313,5 +326,15 @@ btnTranslate.addEventListener('click', async () => {
   } finally {
     translationLoader.classList.add('hidden')
     btnTranslate.disabled = false
+    btnTranslate.textContent = 'Translate'
+
+    // Re-enable controls
+    textareaSrc.disabled = false
+    selectSrcLang.disabled = false
+    selectTgtLang.disabled = false
+    selectConfig.disabled = false
+    selectPrecision.disabled = false
+    selectProvider.disabled = false
+    btnUnload.disabled = false
   }
 })

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IndicTrans2 ONNX In-Browser Translation Demo</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts Inter -->
@@ -111,7 +113,7 @@
             <div class="text-xs text-zinc-400 bg-zinc-950/40 border border-zinc-800/60 rounded-lg p-3 space-y-1">
                 <p class="flex justify-between">
                     <span>Estimated download size:</span>
-                    <span id="model-size-display" class="font-bold text-teal-400">~210 MB</span>
+                    <span id="model-size-display" class="font-bold text-teal-400">~295 MB</span>
                 </p>
                 <p class="text-zinc-500 text-[10px]">
                     Note: Since the models run entirely client-side, the weights must be downloaded and cached in your browser storage. First-time loading may take some time depending on your connection. Subsequent loads are instant.
@@ -172,7 +174,7 @@
 
             <!-- Translate Button & Performance metrics -->
             <div class="pt-4 border-t border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <button id="btn-translate" disabled class="py-3 px-8 bg-teal-600 hover:bg-teal-500 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:pointer-events-none text-white font-semibold rounded-lg transition">
+                <button id="btn-translate" disabled class="py-3 px-8 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition disabled:opacity-40 disabled:pointer-events-none">
                     Translate
                 </button>
                 
